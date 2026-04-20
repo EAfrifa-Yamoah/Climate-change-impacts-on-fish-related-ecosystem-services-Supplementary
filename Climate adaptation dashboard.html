@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Analysis: Climate Adaptation Strategies for Fisheries</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f766e 100%);
+            color: white;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            margin: 0 0 5px 0;
+            font-size: 1.4em;
+            font-weight: 300;
+        }
+
+        .header p {
+            margin: 0;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        #network {
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #fbbf24;
+        }
+
+        .control-group input[type="range"] {
+            width: 150px;
+            margin-bottom: 5px;
+        }
+
+        .control-group button {
+            background: rgba(59, 130, 246, 0.6);
+            border: 1px solid rgba(59, 130, 246, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+            margin: 2px;
+        }
+
+        .control-group button:hover {
+            background: rgba(59, 130, 246, 0.8);
+        }
+
+        .control-group button.active {
+            background: rgba(34, 197, 94, 0.6);
+            border-color: rgba(34, 197, 94, 0.8);
+        }
+
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 350px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+        }
+
+        .info-panel h3 {
+            margin: 0 0 10px 0;
+            color: #fbbf24;
+        }
+
+        .info-panel p {
+            margin: 0 0 10px 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .connections-list {
+            font-size: 11px;
+            opacity: 0.9;
+        }
+
+        .legend-bottom {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+        }
+
+        .legend-bottom h4 {
+            margin: 0 0 10px 0;
+            color: #fbbf24;
+            font-size: 14px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            font-size: 11px;
+        }
+
+        .legend-line {
+            width: 20px;
+            height: 2px;
+            margin-right: 10px;
+            border-radius: 1px;
+        }
+
+        .strong-connection { background: rgba(34, 197, 94, 0.8); }
+        .medium-connection { background: rgba(245, 158, 11, 0.8); }
+        .weak-connection { background: rgba(239, 68, 68, 0.6); }
+
+        .node-size-legend {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .size-example {
+            display: inline-block;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+            background: rgba(59, 130, 246, 0.6);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Network Analysis: Climate Adaptation Strategies</h1>
+            <p>Interconnected approaches for fish-related ecosystem services</p>
+            <p style="margin-top: 5px; font-size: 0.85em; font-style: italic; opacity: 0.9;">E. Afrifa-Yamoah et al.</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Connection Strength Filter</label>
+                <button class="filter-btn active" data-filter="all">All Connections</button>
+                <button class="filter-btn" data-filter="strong">Strong Only</button>
+                <button class="filter-btn" data-filter="medium">Medium+</button>
+            </div>
+            
+            <div class="control-group">
+                <label>Network Layout</label>
+                <button class="layout-btn active" data-layout="force">Force Layout</button>
+                <button class="layout-btn" data-layout="circular">Circular</button>
+                <button class="layout-btn" data-layout="hierarchical">Hierarchical</button>
+            </div>
+
+            <div class="control-group">
+                <label>Node Size: <span id="size-value">Implementation Readiness</span></label>
+                <input type="range" id="node-sizing" min="0" max="2" step="1" value="0">
+            </div>
+
+            <div class="control-group">
+                <label>Force Strength</label>
+                <input type="range" id="force-strength" min="50" max="300" value="150">
+            </div>
+        </div>
+
+        <svg id="network"></svg>
+
+        <div class="info-panel">
+            <h3 id="selected-strategy">Network Overview</h3>
+            <p id="strategy-description">
+                This network shows the interconnections between climate adaptation strategies. Node size indicates implementation readiness, while edge thickness shows relationship strength. Click and drag nodes to explore connections.
+            </p>
+            <div class="connections-list">
+                <strong>Key Network Insights:</strong><br>
+                • Early Warning Systems serve as information hubs<br>
+                • EBFM acts as central coordination mechanism<br>
+                • Technology enables multiple other strategies<br>
+                • Governance remains the most challenging to implement
+            </div>
+        </div>
+
+        <div class="legend-bottom">
+            <h4>Directional Network Legend</h4>
+            <div class="legend-item">
+                <div class="legend-line strong-connection"></div>
+                <span>Strong influence (2.5-3.0)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line medium-connection"></div>
+                <span>Medium influence (1.5-2.5)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line weak-connection"></div>
+                <span>Weak influence (1.0-1.5)</span>
+            </div>
+            
+            <div style="margin-top: 10px; font-size: 10px;">
+                <strong>Relationship Types:</strong><br>
+                • Dependency: Strategy requires input<br>
+                • Enabling: Strategy facilitates another<br>
+                • Coordination: Mutual collaboration<br>
+                • Information: Data/knowledge flow<br>
+                • Feedback: Response/adjustment flow
+            </div>
+            
+            <div class="node-size-legend">
+                <h4 style="margin: 0 0 8px 0;">Network Metrics</h4>
+                <div style="font-size: 10px; line-height: 1.4;">
+                    <strong>Net Influence:</strong> Outgoing - Incoming weights<br>
+                    <strong>Arrows:</strong> Direction of influence/dependency<br>
+                    <strong>Numbers:</strong> Quantified edge weights<br>
+                    <div class="size-example" style="width: 8px; height: 8px;"></div> Low centrality<br>
+                    <div class="size-example" style="width: 12px; height: 12px;"></div> Medium centrality<br>
+                    <div class="size-example" style="width: 16px; height: 16px;"></div> High centrality
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Network data structure
+        const networkData = {
+            nodes: [
+                {id: 'ebfm', name: 'Ecosystem-Based\nFisheries Management', category: 'ecological', readiness: 65, centrality: 0.85, x: 0, y: -150},
+                {id: 'mpas', name: 'Climate-Smart MPAs\n& Restoration', category: 'conservation', readiness: 70, centrality: 0.75, x: 200, y: -100},
+                {id: 'aquaculture', name: 'Climate-Resilient\nAquaculture', category: 'production', readiness: 55, centrality: 0.60, x: 150, y: 150},
+                {id: 'early-warning', name: 'Early Warning\nSystems', category: 'information', readiness: 80, centrality: 0.90, x: -150, y: 0},
+                {id: 'livelihood', name: 'Livelihood\nDiversification', category: 'social', readiness: 45, centrality: 0.55, x: -200, y: 150},
+                {id: 'governance', name: 'International\nCooperation', category: 'governance', readiness: 35, centrality: 0.70, x: 100, y: -200},
+                {id: 'technology', name: 'Digital Innovation\nSolutions', category: 'technology', readiness: 75, centrality: 0.80, x: -100, y: 100}
+            ],
+            links: [
+                {source: 'ebfm', target: 'early-warning', strength: 'strong', value: 3},
+                {source: 'ebfm', target: 'mpas', strength: 'strong', value: 3},
+                {source: 'early-warning', target: 'technology', strength: 'strong', value: 3},
+                {source: 'aquaculture', target: 'technology', strength: 'strong', value: 3},
+                {source: 'governance', target: 'livelihood', strength: 'strong', value: 3},
+                {source: 'aquaculture', target: 'livelihood', strength: 'strong', value: 3},
+                {source: 'ebfm', target: 'governance', strength: 'medium', value: 2},
+                {source: 'mpas', target: 'technology', strength: 'medium', value: 2},
+                {source: 'mpas', target: 'governance', strength: 'medium', value: 2},
+                {source: 'early-warning', target: 'aquaculture', strength: 'medium', value: 2},
+                {source: 'early-warning', target: 'livelihood', strength: 'medium', value: 2},
+                {source: 'governance', target: 'technology', strength: 'medium', value: 2},
+                {source: 'technology', target: 'livelihood', strength: 'medium', value: 2},
+                {source: 'governance', target: 'ebfm', strength: 'medium', value: 2},
+                {source: 'mpas', target: 'livelihood', strength: 'weak', value: 1},
+                {source: 'aquaculture', target: 'governance', strength: 'weak', value: 1},
+                {source: 'ebfm', target: 'technology', strength: 'weak', value: 1}
+            ]
+        };
+
+        const strategyData = {
+            'ebfm': {
+                title: 'Ecosystem-Based Fisheries Management',
+                content: 'Integrates climate science through dynamic spatial management, adaptive harvest rules, and habitat protection. Examples include North Pacific Council climate strategies and EU Common Fisheries Policy ecosystem approaches.',
+                readiness: 65,
+                keyPoints: ['Climate-informed stock assessments', 'Flexible fishing zones', 'Habitat protection integration'],
+                connections: ['Early Warning Systems (data dependency)', 'Climate-Smart MPAs (spatial coordination)', 'International Cooperation (policy framework)', 'Digital Innovation (monitoring tools)', 'Aquaculture (spatial planning)', 'Livelihood Diversification (community impact)']
+            },
+            'mpas': {
+                title: 'Climate-Smart MPAs & Restoration',
+                content: 'Dynamic networks with climate refugia, migration corridors, and adaptive zoning. Focuses on climate-tolerant species and blue carbon habitats like mangroves and seagrass.',
+                readiness: 70,
+                keyPoints: ['Climate refugia identification', 'Migration corridor design', 'Blue carbon restoration'],
+                connections: ['EBFM (integrated spatial planning)', 'Digital Innovation (monitoring systems)', 'International Cooperation (transboundary coordination)', 'Livelihood Diversification (alternative employment)', 'Early Warning Systems (adaptive management)']
+            },
+            'aquaculture': {
+                title: 'Climate-Resilient Aquaculture',
+                content: 'Diversified systems using recirculating aquaculture (RAS), integrated multi-trophic aquaculture (IMTA), and offshore operations to minimize climate vulnerability.',
+                readiness: 55,
+                keyPoints: ['Climate-tolerant species breeding', 'IMTA nutrient cycling', 'Offshore system deployment'],
+                connections: ['Digital Innovation (automation & monitoring)', 'Livelihood Diversification (employment creation)', 'Early Warning Systems (production planning)', 'International Cooperation (trade & standards)', 'EBFM (wild-capture interaction)']
+            },
+            'early-warning': {
+                title: 'Early Warning & Climate Services',
+                content: 'Real-time monitoring for marine heatwaves, harmful algal blooms, and hypoxic events. Seasonal forecasting enables strategic planning and adaptive responses.',
+                readiness: 80,
+                keyPoints: ['Marine heatwave alerts', 'Seasonal distribution forecasts', 'Stakeholder decision support'],
+                connections: ['Digital Innovation (technological platform)', 'EBFM (management decisions)', 'Aquaculture (production timing)', 'Livelihood Diversification (risk communication)', 'Climate-Smart MPAs (adaptive zoning)', 'International Cooperation (data sharing)']
+            },
+            'livelihood': {
+                title: 'Livelihood Diversification',
+                content: 'Community-based adaptation through alternative livelihoods (eco-tourism, aquaculture), skills training, financial services, and gender-inclusive frameworks.',
+                readiness: 45,
+                keyPoints: ['Alternative livelihood development', 'Capacity building programs', 'Gender-inclusive adaptation'],
+                connections: ['International Cooperation (funding & support)', 'Aquaculture (alternative production)', 'Digital Innovation (market access)', 'Early Warning Systems (risk preparedness)', 'Climate-Smart MPAs (ecotourism opportunities)']
+            },
+            'governance': {
+                title: 'International Cooperation',
+                content: 'Modernizing Regional Fisheries Management Organizations (RFMOs) with dynamic allocation mechanisms, climate science integration, and enhanced dispute resolution.',
+                readiness: 35,
+                keyPoints: ['RFMO modernization', 'Dynamic allocation systems', 'Climate science integration'],
+                connections: ['EBFM (policy implementation)', 'Livelihood Diversification (community support)', 'Digital Innovation (information systems)', 'Climate-Smart MPAs (designation authority)', 'Aquaculture (regulatory framework)', 'Early Warning Systems (data protocols)']
+            },
+            'technology': {
+                title: 'Digital Innovation Solutions',
+                content: 'AI-driven precision fisheries, satellite monitoring, environmental DNA assessments, blockchain traceability, and mobile climate information systems.',
+                readiness: 75,
+                keyPoints: ['AI precision management', 'eDNA biodiversity monitoring', 'Blockchain supply chain transparency'],
+                connections: ['Early Warning Systems (sensing & communication)', 'Aquaculture (automation & optimization)', 'Livelihood Diversification (digital access)', 'International Cooperation (data platforms)', 'EBFM (monitoring tools)', 'Climate-Smart MPAs (surveillance systems)']
+            }
+        };
+
+        // Color schemes for different categories
+        const categoryColors = {
+            'ecological': '#22c55e',
+            'conservation': '#3b82f6',
+            'production': '#a855f7',
+            'information': '#ef4444',
+            'social': '#f59e0b',
+            'governance': '#14b8a6',
+            'technology': '#ec4899'
+        };
+
+        const strengthColors = {
+            'strong': '#22c55e',
+            'medium': '#f59e0b',
+            'weak': '#ef4444'
+        };
+
+        // Initialize D3 network
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        const svg = d3.select("#network")
+            .attr("width", width)
+            .attr("height", height);
+
+        const zoom = d3.zoom()
+            .scaleExtent([0.3, 3])
+            .on("zoom", function(event) {
+                g.attr("transform", event.transform);
+            });
+
+        svg.call(zoom);
+
+        const g = svg.append("g");
+
+        let simulation = d3.forceSimulation(networkData.nodes)
+            .force("link", d3.forceLink(networkData.links).id(function(d) { return d.id; }).distance(120))
+            .force("charge", d3.forceManyBody().strength(-400))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collision", d3.forceCollide().radius(40));
+
+        let currentSizing = 'readiness';
+        let currentFilter = 'all';
+
+        function getNodeSize(d) {
+            const base = 8;
+            switch(currentSizing) {
+                case 'readiness': return base + (d.readiness / 100) * 25;
+                case 'centrality': return base + (d.centrality) * 25;
+                case 'connections': return base + (getConnectionCount(d.id) * 3);
+                default: return base + 15;
+            }
+        }
+
+        function getConnectionCount(nodeId) {
+            return networkData.links.filter(function(l) { 
+                return l.source.id === nodeId || l.target.id === nodeId; 
+            }).length;
+        }
+
+        function getFilteredLinks() {
+            switch(currentFilter) {
+                case 'strong': return networkData.links.filter(function(l) { return l.strength === 'strong'; });
+                case 'medium': return networkData.links.filter(function(l) { return l.strength === 'strong' || l.strength === 'medium'; });
+                case 'all': 
+                default: return networkData.links;
+            }
+        }
+
+        function getTimeframe(readiness) {
+            if (readiness >= 75) return "Short-term (1-5 years)";
+            if (readiness >= 50) return "Medium-term (5-20 years)";
+            return "Long-term (20+ years)";
+        }
+
+        function getStakeholders(strategyId) {
+            const stakeholders = {
+                'ebfm': 'Fisheries managers, scientists, fishing industry',
+                'mpas': 'Conservation organizations, marine managers, local communities',
+                'aquaculture': 'Aquaculture industry, coastal communities, investors',
+                'early-warning': 'Research institutions, government agencies, fishing communities',
+                'livelihood': 'Fishing communities, NGOs, development agencies',
+                'governance': 'International organizations, governments, policy makers',
+                'technology': 'Tech companies, research institutions, implementation agencies'
+            };
+            return stakeholders[strategyId] || 'Multiple stakeholder groups';
+        }
+
+        function updateNetwork() {
+            g.selectAll("*").remove();
+
+            const filteredLinks = getFilteredLinks();
+
+            const link = g.append("g")
+                .selectAll("line")
+                .data(filteredLinks)
+                .enter().append("line")
+                .attr("stroke", function(d) { return strengthColors[d.strength]; })
+                .attr("stroke-opacity", 0.8)
+                .attr("stroke-width", function(d) { return d.value * 2; });
+
+            const node = g.append("g")
+                .selectAll("g")
+                .data(networkData.nodes)
+                .enter().append("g")
+                .attr("class", "node")
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended));
+
+            node.append("circle")
+                .attr("r", getNodeSize)
+                .attr("fill", function(d) { return categoryColors[d.category]; })
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 2)
+                .attr("opacity", 0.9);
+
+            node.append("text")
+                .text(function(d) { return d.name; })
+                .attr("text-anchor", "middle")
+                .attr("dy", "-0.5em")
+                .attr("font-size", "11px")
+                .attr("fill", "white")
+                .attr("font-weight", "600")
+                .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
+                .style("pointer-events", "none");
+
+            node.append("text")
+                .text(function(d) { return d.readiness + '%'; })
+                .attr("text-anchor", "middle")
+                .attr("dy", "1.2em")
+                .attr("font-size", "9px")
+                .attr("fill", "#fbbf24")
+                .attr("font-weight", "bold")
+                .style("pointer-events", "none");
+
+            node.on("mouseover", function(event, d) {
+                const connectedNodes = new Set();
+                filteredLinks.forEach(function(l) {
+                    if (l.source.id === d.id || l.target.id === d.id) {
+                        connectedNodes.add(l.source.id === d.id ? l.target.id : l.source.id);
+                    }
+                });
+
+                node.selectAll("circle")
+                    .attr("opacity", function(n) { return connectedNodes.has(n.id) || n.id === d.id ? 1 : 0.3; });
+
+                link.attr("opacity", function(l) { 
+                    return l.source.id === d.id || l.target.id === d.id ? 1 : 0.1; 
+                });
+
+                const details = strategyData[d.id];
+                if (details) {
+                    document.getElementById('selected-strategy').textContent = d.name.replace(/\n/g, ' ');
+                    document.getElementById('strategy-description').innerHTML = 
+                        '<strong>Strategy Overview:</strong><br>' +
+                        details.content + '<br><br>' +
+                        '<strong>Implementation Timeframe:</strong> ' + getTimeframe(details.readiness) + '<br>' +
+                        '<strong>Key Stakeholders:</strong> ' + getStakeholders(d.id) + '<br><br>' +
+                        '<div class="connections-list">' +
+                        '<strong>Key Connections (' + details.connections.length + '):</strong><br>' +
+                        details.connections.map(function(conn) { return '• ' + conn; }).join('<br>') +
+                        '</div>';
+                }
+            })
+            .on("mouseout", function() {
+                node.selectAll("circle").attr("opacity", 0.9);
+                link.attr("opacity", 0.8);
+            });
+
+            simulation.nodes(networkData.nodes);
+            simulation.force("link").links(filteredLinks);
+            simulation.alpha(0.3).restart();
+
+            simulation.on("tick", function() {
+                link
+                    .attr("x1", function(d) { return d.source.x; })
+                    .attr("y1", function(d) { return d.source.y; })
+                    .attr("x2", function(d) { return d.target.x; })
+                    .attr("y2", function(d) { return d.target.y; });
+
+                node
+                    .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+            });
+        }
+
+        function setLayout(layoutType) {
+            switch(layoutType) {
+                case 'circular':
+                    networkData.nodes.forEach(function(node, i) {
+                        const angle = (i / networkData.nodes.length) * 2 * Math.PI;
+                        const radius = 200;
+                        node.fx = width/2 + radius * Math.cos(angle);
+                        node.fy = height/2 + radius * Math.sin(angle);
+                    });
+                    break;
+                case 'hierarchical':
+                    const sorted = networkData.nodes.slice().sort(function(a, b) { return b.readiness - a.readiness; });
+                    sorted.forEach(function(node, i) {
+                        node.fx = 200 + (i % 3) * 300;
+                        node.fy = 150 + Math.floor(i / 3) * 150;
+                    });
+                    break;
+                case 'force':
+                default:
+                    networkData.nodes.forEach(function(node) {
+                        node.fx = null;
+                        node.fy = null;
+                    });
+            }
+            simulation.alpha(0.3).restart();
+        }
+
+        // Event handlers
+        document.querySelectorAll('.filter-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+                updateNetwork();
+            });
+        });
+
+        document.querySelectorAll('.layout-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.layout-btn').forEach(function(b) { b.classList.remove('active'); });
+                this.classList.add('active');
+                setLayout(this.dataset.layout);
+            });
+        });
+
+        document.getElementById('node-sizing').addEventListener('input', function() {
+            const sizingOptions = ['readiness', 'centrality', 'connections'];
+            currentSizing = sizingOptions[this.value];
+            const sizeNames = {
+                'readiness': 'Implementation Readiness',
+                'centrality': 'Network Centrality',
+                'connections': 'Connection Count'
+            };
+            document.getElementById('size-value').textContent = sizeNames[currentSizing];
+            
+            g.selectAll("circle")
+                .transition()
+                .duration(500)
+                .attr("r", getNodeSize);
+        });
+
+        document.getElementById('force-strength').addEventListener('input', function() {
+            const strength = -parseInt(this.value);
+            simulation.force("charge").strength(strength);
+            simulation.alpha(0.3).restart();
+        });
+
+        // Drag functions
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+        }
+
+        // Initialize network
+        updateNetwork();
+
+        // Add some initial movement
+        setTimeout(function() {
+            simulation.alpha(0.5).restart();
+        }, 1000);
+    </script>
+</body>
+</html>
